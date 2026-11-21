@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+
+{% block title %}Agenda - Kalender & To Do List{% endblock %}
+
+{% block content %}
+<div class="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-hidden h-[calc(100vh-4rem)]">
+
+    <!-- ======================================================== -->
+    <!-- PANEL KIRI: Sidebar (Mini Kalender, Kategori, Hari Ini) -->
+    <!-- ======================================================== -->
+    <aside class="lg:col-span-3 flex flex-col gap-5 overflow-y-auto pr-1">
+
+        <!-- Mini Kalender -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-xs p-4">
+            <div class="flex items-center justify-between mb-3">
+                <h2 id="miniCalendarTitle" class="text-sm font-semibold text-slate-800">Desember 2026</h2>
+                <div class="flex items-center gap-1">
+                    <button type="button" id="miniPrevBtn" class="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition" aria-label="Bulan sebelumnya">
+                        <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </button>
+                    <button type="button" id="miniTodayBtn" class="px-2 py-0.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50 rounded transition">
+                        Hari ini
+                    </button>
+                    <button type="button" id="miniNextBtn" class="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition" aria-label="Bulan berikutnya">
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </button>
+                </div>
+            </div>
+            <!-- Grid Hari -->
+            <div class="grid grid-cols-7 text-center text-xs font-medium text-slate-400 mb-1">
+                <span>M</span><span>S</span><span>S</span><span>R</span><span>K</span><span>J</span><span>S</span>
+            </div>
+            <!-- Grid Tanggal -->
+            <div id="miniCalendarGrid" class="grid grid-cols-7 text-center text-xs gap-y-1">
+                <!-- Diisi dinamis oleh calendar.js -->
+            </div>
+        </div>
+
+        <!-- Filter Status & Prioritas -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-xs p-4">
+            <div class="flex items-center justify-between mb-2.5">
+                <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Filter Status</h3>
+            </div>
+            <div class="flex flex-wrap gap-1.5 mb-3" id="statusFilterGroup">
+                <button type="button" data-status="" class="filter-status-btn active px-2.5 py-1 text-xs rounded-lg font-medium bg-indigo-600 text-white">Semua</button>
+                <button type="button" data-status="aktif" class="filter-status-btn px-2.5 py-1 text-xs rounded-lg font-medium bg-slate-100 text-slate-600 hover:bg-slate-200">Aktif</button>
+                <button type="button" data-status="selesai" class="filter-status-btn px-2.5 py-1 text-xs rounded-lg font-medium bg-slate-100 text-slate-600 hover:bg-slate-200">Selesai</button>
+            </div>
+
+            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Filter Prioritas</h3>
+            <select id="priorityFilterSelect" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                <option value="">Semua Prioritas</option>
+                <option value="tinggi">Tinggi (Rose)</option>
+                <option value="sedang">Sedang (Amber)</option>
+                <option value="rendah">Rendah (Slate)</option>
+            </select>
+        </div>
+
+        <!-- Kategori (UC-08, F-10) -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-xs p-4 flex-1">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Kategori</h3>
+                <a href="{{ url_for('pages.settings') }}" class="text-xs font-medium text-indigo-600 hover:underline">Kelola</a>
+            </div>
+            <div id="categoryFilterList" class="flex flex-col gap-2">
+                <label class="flex items-center gap-2.5 text-xs text-slate-700 cursor-pointer hover:bg-slate-50 p-1.5 rounded-lg transition">
+                    <input type="checkbox" value="ALL" checked class="category-checkbox rounded text-indigo-600 focus:ring-indigo-500">
+                    <span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                    <span class="flex-1 font-medium">Semua Kategori</span>
+                </label>
+                {% for cat in categories %}
+                <label class="flex items-center gap-2.5 text-xs text-slate-700 cursor-pointer hover:bg-slate-50 p-1.5 rounded-lg transition">
+                    <input type="checkbox" value="{{ cat.id }}" class="category-checkbox rounded text-indigo-600 focus:ring-indigo-500">
+                    <span class="w-2.5 h-2.5 rounded-full" style="background-color: {{ cat.color }};"></span>
+                    <span class="flex-1 truncate">{{ cat.name }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Hari Ini & Mendatang (F-11) -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-xs p-4">
+            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center justify-between">
+                <span>Hari Ini & Mendatang</span>
+                <span id="upcomingBadge" class="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded text-[10px] font-medium">0</span>
+            </h3>
+            <div id="upcomingEventsList" class="flex flex-col gap-2 max-h-48 overflow-y-auto text-xs">
+                <!-- Diisi dinamis -->
+                <p class="text-slate-400 italic">Memuat agenda...</p>
+            </div>
+        </div>
+
+    </aside>
+
+    <!-- ======================================================== -->
+    <!-- PANEL TENGAH: Kalender Utama (FullCalendar) -->
+    <!-- ======================================================== -->
+    <section class="lg:col-span-6 bg-white rounded-xl border border-slate-200 shadow-xs p-4 flex flex-col h-full overflow-hidden">
+        <div id="mainCalendar" class="flex-1 h-full"></div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- PANEL KANAN: Detail Rincian Event (F-04, UC-02) -->
+    <!-- ======================================================== -->
+    <aside class="lg:col-span-3 flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-xs p-5 overflow-y-auto">
+        
+        <!-- Header Detail Panel -->
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Detail Event</h2>
+            <span id="detailStatusBadge" class="hidden text-xs px-2.5 py-0.5 rounded-full font-medium"></span>
+        </div>
+
+        <!-- Detail Content Container -->
+        <div id="eventDetailContent" class="flex-1 flex flex-col pt-4 hidden">
+            <!-- Title -->
+            <h3 id="detailTitle" class="text-lg font-bold text-slate-900 leading-snug mb-3 break-words"></h3>
+
+            <!-- Badges: Category & Priority -->
+            <div class="flex flex-wrap items-center gap-2 mb-4">
+                <span id="detailCategoryBadge" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-white"></span>
+                <span id="detailPriorityBadge" class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium"></span>
+            </div>
+
+            <!-- Time & Location -->
+            <div class="flex flex-col gap-2.5 text-xs text-slate-600 mb-5 pb-4 border-b border-slate-100">
+                <div class="flex items-start gap-2.5">
+                    <i class="fa-regular fa-clock text-slate-400 mt-0.5"></i>
+                    <div>
+                        <p id="detailTime" class="font-medium text-slate-800"></p>
+                        <p id="detailDuration" class="text-slate-400 text-[11px]"></p>
+                    </div>
+                </div>
+                <div id="detailLocationRow" class="flex items-center gap-2.5">
+                    <i class="fa-solid fa-location-dot text-slate-400"></i>
+                    <span id="detailLocation" class="text-slate-700"></span>
+                </div>
+            </div>
+
+            <!-- Catatan / Deskripsi -->
+            <div class="mb-5 flex-1">
+                <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Catatan</h4>
+                <div id="detailDescription" class="text-xs text-slate-700 bg-slate-50 p-3 rounded-lg whitespace-pre-line min-h-[60px] border border-slate-100">
+                    <span class="text-slate-400 italic">Tidak ada catatan</span>
+                </div>
+            </div>
+
+            <!-- Pengingat (Reminders) -->
+            <div class="mb-6">
+                <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Pengingat</h4>
+                <ul id="detailRemindersList" class="flex flex-col gap-1.5 text-xs text-slate-600">
+                    <!-- Diisi dinamis -->
+                </ul>
+            </div>
+
+            <!-- Action Buttons: [Selesai] [Ubah] [Hapus] (Bab 9.1 & Wireframe) -->
+            <div class="pt-4 border-t border-slate-100 flex items-center gap-2">
+                <button type="button" id="toggleCompleteBtn"
+                    class="flex-1 py-2 px-3 text-xs font-medium text-white rounded-lg transition flex items-center justify-center gap-1.5 shadow-xs">
+                    <i class="fa-solid fa-check"></i>
+                    <span id="toggleCompleteText">Selesai</span>
+                </button>
+                <button type="button" id="editEventBtn"
+                    class="py-2 px-3 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition flex items-center justify-center gap-1.5">
+                    <i class="fa-regular fa-pen-to-square"></i>
+                    <span>Ubah</span>
+                </button>
+                <button type="button" id="deleteEventBtn"
+                    class="py-2 px-3 text-xs font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition flex items-center justify-center gap-1.5">
+                    <i class="fa-regular fa-trash-can"></i>
+                    <span>Hapus</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Empty State (Bab 9.1) -->
+        <div id="eventDetailEmpty" class="flex-1 flex flex-col items-center justify-center text-center p-6 text-slate-400">
+            <div class="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-3 text-slate-300">
+                <i class="fa-regular fa-calendar-days text-2xl"></i>
+            </div>
+            <h4 class="text-sm font-semibold text-slate-700 mb-1">Belum Ada Event Dipilih</h4>
+            <p class="text-xs text-slate-400 max-w-[200px] mb-4">Klik event di kalender untuk melihat rincian lengkapnya.</p>
+            <button type="button" onclick="document.getElementById('openNewEventModalBtn').click()"
+                class="text-xs text-indigo-600 hover:text-indigo-700 font-medium hover:underline inline-flex items-center gap-1">
+                <i class="fa-solid fa-plus text-[10px]"></i> Tambah event baru
+            </button>
+        </div>
+
+    </aside>
+
+</div>
+
+<!-- ======================================================== -->
+<!-- MODAL FORM EVENT (Tambah & Ubah Event - UC-03, UC-04) -->
+<!-- ======================================================== -->
+<div id="eventModal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full p-6 animate-slide-up relative">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+            <h3 id="modalTitle" class="text-base font-semibold text-slate-900">Tambah Event Baru</h3>
+            <button type="button" id="closeEventModalBtn" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <form id="eventForm" class="flex flex-col gap-4">
+            <input type="hidden" id="formEventId" value="">
+
+            <!-- Judul Event -->
+            <div>
+                <label for="eventTitleInput" class="block text-xs font-semibold text-slate-700 mb-1">Judul Event <span class="text-rose-500">*</span></label>
+                <input type="text" id="eventTitleInput" required maxlength="120"
+                    placeholder="Contoh: Presentasi proyek"
+                    class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                <span id="titleError" class="text-rose-500 text-xs hidden mt-1"></span>
+            </div>
+
+            <!-- All Day Toggle -->
+            <div class="flex items-center gap-2">
+                <input type="checkbox" id="eventAllDayInput" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300">
+                <label for="eventAllDayInput" class="text-xs font-medium text-slate-700 select-none cursor-pointer">Sepanjang hari</label>
+            </div>
+
+            <!-- Waktu Mulai & Selesai -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label for="eventStartInput" class="block text-xs font-semibold text-slate-700 mb-1">Waktu Mulai <span class="text-rose-500">*</span></label>
+                    <input type="datetime-local" id="eventStartInput" required
+                        class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                </div>
+                <div id="endInputContainer">
+                    <label for="eventEndInput" class="block text-xs font-semibold text-slate-700 mb-1">Waktu Selesai</label>
+                    <input type="datetime-local" id="eventEndInput"
+                        class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                    <span id="timeError" class="text-rose-500 text-xs hidden mt-1"></span>
+                </div>
+            </div>
+
+            <!-- Kategori & Prioritas -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label for="eventCategorySelect" class="block text-xs font-semibold text-slate-700 mb-1">Kategori</label>
+                    <select id="eventCategorySelect" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                        <option value="">Tanpa Kategori</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}">{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="eventPrioritySelect" class="block text-xs font-semibold text-slate-700 mb-1">Prioritas</label>
+                    <select id="eventPrioritySelect" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                        <option value="rendah">Rendah</option>
+                        <option value="sedang" selected>Sedang</option>
+                        <option value="tinggi">Tinggi</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Lokasi -->
+            <div>
+                <label for="eventLocationInput" class="block text-xs font-semibold text-slate-700 mb-1">Lokasi</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-location-dot text-xs"></i>
+                    </span>
+                    <input type="text" id="eventLocationInput" placeholder="Contoh: Ruang rapat B atau Zoom"
+                        class="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                </div>
+            </div>
+
+            <!-- Deskripsi / Catatan -->
+            <div>
+                <label for="eventDescriptionInput" class="block text-xs font-semibold text-slate-700 mb-1">Catatan</label>
+                <textarea id="eventDescriptionInput" rows="2" placeholder="Catatan tambahan atau deskripsi event..."
+                    class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"></textarea>
+            </div>
+
+            <!-- Pengingat (F-06, UC-09) -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1.5">Pengingat (Notifikasi)</label>
+                <div class="grid grid-cols-2 gap-2 text-xs text-slate-700">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="reminderOffset" value="0" class="rounded text-indigo-600 focus:ring-indigo-500">
+                        <span>Saat event dimulai</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="reminderOffset" value="10" class="rounded text-indigo-600 focus:ring-indigo-500">
+                        <span>10 menit sebelumnya</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="reminderOffset" value="30" class="rounded text-indigo-600 focus:ring-indigo-500">
+                        <span>30 menit sebelumnya</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="reminderOffset" value="60" class="rounded text-indigo-600 focus:ring-indigo-500">
+                        <span>1 jam sebelumnya</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="reminderOffset" value="1440" class="rounded text-indigo-600 focus:ring-indigo-500">
+                        <span>1 hari sebelumnya</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Tombol Batal & Simpan (Bab 9.1) -->
+            <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button type="button" id="cancelEventModalBtn"
+                    class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition">
+                    Batal
+                </button>
+                <button type="submit" id="saveEventBtn"
+                    class="px-5 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-check text-xs"></i>
+                    <span>Simpan</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- MODAL KONFIRMASI HAPUS (Aman dari salah klik - Bab 9.1) -->
+<!-- ======================================================== -->
+<div id="deleteConfirmModal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-sm w-full p-6 text-center animate-slide-up">
+        <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3">
+            <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+        </div>
+        <h3 class="text-base font-semibold text-slate-900 mb-1">Hapus Event Ini?</h3>
+        <p class="text-xs text-slate-500 mb-5">Apakah Anda yakin ingin menghapus event <span id="deleteEventTitlePreview" class="font-semibold text-slate-700"></span>? Semua pengingat terkait juga akan dihapus.</p>
+        <div class="flex items-center justify-center gap-3">
+            <button type="button" id="cancelDeleteBtn"
+                class="w-full px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition">
+                Batal
+            </button>
+            <button type="button" id="confirmDeleteBtn"
+                class="w-full px-4 py-2 text-xs font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs transition">
+                Ya, Hapus
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/calendar.js') }}"></script>
+{% endblock %}
